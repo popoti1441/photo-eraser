@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#111118">
+  <meta name="description" content="원본 해상도 그대로, 칠한 부분만 지우는 사진 보정 앱">
+  <title>사진 지우개</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="app">
+  <header class="top">
+    <button class="icon-btn" id="btnOpen" aria-label="사진 열기">
+      <svg viewBox="0 0 24 24"><path d="M4 5h5l2 2h9v12H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="title-wrap">
+      <div class="title" id="title">사진 지우개</div>
+      <div class="subtitle" id="subtitle">원본 해상도 그대로, 칠한 곳만 지워요</div>
+    </div>
+    <button class="icon-btn" id="btnUndo" aria-label="실행 취소" disabled>
+      <svg viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M4 12h11a5 5 0 0 1 0 10h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 -3)"/></svg>
+    </button>
+    <button class="icon-btn" id="btnRedo" aria-label="다시 실행" disabled>
+      <svg viewBox="0 0 24 24"><path d="m15 7 5 5-5 5M20 12H9a5 5 0 0 0 0 10h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 -3)"/></svg>
+    </button>
+    <button class="save" id="btnSave" disabled>저장</button>
+  </header>
+
+  <section class="stage" id="stage">
+    <canvas id="view" aria-label="사진. 손가락으로 칠하고, 두 손가락으로 확대·이동"></canvas>
+    <div class="empty" id="empty">
+      <p class="big">🪄</p>
+      <p><b>지울 사진을 여세요</b></p>
+      <p>갤러리에서 사진을 <b>공유 → 사진 지우개</b>로 보내거나 아래 버튼을 누르세요.</p>
+      <button class="primary" id="btnOpen2">사진 열기</button>
+    </div>
+    <button class="compare" id="btnCompare" hidden>누르는 동안 원본</button>
+    <div class="zoom-badge" id="zoomBadge" hidden></div>
+    <div class="busy" id="busy" hidden>
+      <div class="busy-card">
+        <div class="spinner"></div>
+        <div id="busyText">처리 중…</div>
+        <div class="bar"><i id="busyBar"></i></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dock" id="dock">
+    <div class="row tools">
+      <div class="seg" role="radiogroup" aria-label="도구">
+        <button data-tool="brush" class="on" role="radio">🖌 칠하기</button>
+        <button data-tool="erase" role="radio">◻ 빼기</button>
+        <button data-tool="pan" role="radio">✋ 이동</button>
+      </div>
+      <button class="chip ghost" id="btnClear">선택 비우기</button>
+    </div>
+    <div class="row size">
+      <span class="lbl">붓 크기</span>
+      <input type="range" id="brush" min="6" max="120" step="1" value="36" aria-label="붓 크기">
+      <span class="dot-prev" id="dotPrev"></span>
+    </div>
+    <div class="row auto">
+      <button class="chip" id="btnWires">⚡ 하늘 전선 자동 선택</button>
+      <button class="chip" id="btnEdited">🖼 보정본 불러오기</button>
+    </div>
+    <div class="row actions">
+      <button class="go" id="btnErase" disabled>✨ 칠한 곳 지우기</button>
+      <button class="go alt" id="btnFromEdited" hidden disabled>🖼 보정본으로 채우기</button>
+    </div>
+  </section>
+</main>
+
+<input type="file" id="pickMain" accept="image/*" hidden>
+<input type="file" id="pickEdited" accept="image/*" hidden>
+
+<dialog id="dlgSave" class="sheet">
+  <h3>저장</h3>
+  <p class="tip" id="saveInfo"></p>
+  <button class="sheet-btn" data-act="download">⬇ 휴대폰에 저장 <small>Download 폴더 → 갤러리에서 보여요</small></button>
+  <button class="sheet-btn" data-act="share">↗ 공유하기 <small>카톡·메일 등으로 바로 보내기 (원본 화질)</small></button>
+  <button class="sheet-btn cancel" data-act="close">닫기</button>
+</dialog>
+
+<dialog id="dlgHelp" class="sheet">
+  <h3>보정본으로 채우기</h3>
+  <p class="tip">갤럭시 <b>생성형 편집</b>으로 지운 사진을 불러오면, 두 사진이 다른 곳(=지운 곳)을 자동으로 칠해 드려요. 칠한 부분만 보정본에서 가져오고 나머지는 원본 화질 그대로예요.</p>
+  <p class="tip">자동 선택이 넘치거나 모자라면 <b>칠하기 / 빼기</b>로 다듬은 뒤 <b>보정본으로 채우기</b>를 누르세요.</p>
+  <button class="sheet-btn cancel" data-act="close">알겠어요</button>
+</dialog>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="jpegmeta.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
