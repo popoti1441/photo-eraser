@@ -73,6 +73,15 @@ self.onmessage = async (e) => {
         post({ type: 'mask', id: m.id, mask: mask.buffer }, [mask.buffer]);
         break;
       }
+      case 'hybrid': {
+        if (!edited) throw new Error('보정본이 없어요');
+        const mask = new Uint8Array(m.mask);
+        post({ type: 'status', text: '합치는 중… (전선은 원본 하늘 결로 채움)' });
+        const ps = E.hybridMerge(image, edited, mask, { progress: (f) => post({ type: 'progress', value: f }) });
+        const msgs = ps.map(patchMsg);
+        post({ type: 'patches', id: m.id, patches: msgs }, msgs.map((q) => q.d));
+        break;
+      }
       case 'composite': {
         if (!edited) throw new Error('보정본이 없어요');
         const mask = new Uint8Array(m.mask);

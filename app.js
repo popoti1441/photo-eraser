@@ -207,10 +207,10 @@ async function doFromEdited() {
   const m = readMask(); if (!m) return toast('가져올 곳을 칠해 주세요');
   setBusy(true, '보정본에서 가져오는 중…');
   try {
-    const r = await call('composite', { mask: m.buffer }, [m.buffer]);
+    const r = await call('hybrid', { mask: m.buffer }, [m.buffer]);
     applyPatches(r.patches);
     clearMask(); render();
-    toast('칠한 곳만 보정본으로 바꿨어요. 나머지는 원본 화질 그대로예요', 3200);
+    toast('합쳤어요. 더 다듬을 곳은 저장 → 갤럭시 AI 지우개 → 두 장을 다시 넣으면 그 부분만 반영돼요', 5000);
   } catch (err) { toast('실패: ' + err.message, 4000); }
   finally { setBusy(false); }
 }

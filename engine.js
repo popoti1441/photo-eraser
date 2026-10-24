@@ -637,7 +637,30 @@
     return p;
   }
 
-  const api = { inpaint, inpaintCrop, smartErase, applyPatch, detectWires, diffMask, composite, bbox, dilate, erode, components, maxHoleRadius };
+  // 보정본 합치기(혼합): 덩어리(사람·전신주)는 보정본에서, 가는 선(전선)은 원본 주변 무늬로 직접 채움
+  // → 갤럭시가 뭉갠 하늘 질감 대신 원본 하늘 결이 살아남
+  function hybridMerge(image, edited, mask, opts) {
+    opts = opts || {};
+    const W = image.w, H = image.h;
+    const thinR = Math.max(6, Math.round(Math.max(W, H) * (opts.thinRatio || 0.008)));
+    let thick = open(mask, W, H, 2 * thinR + 1);
+    thick = dilate(thick, W, H, 2 * thinR + 1);
+    const blobMask = new Uint8Array(W * H), thinMask = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) if (mask[i]) { if (thick[i]) blobMask[i] = 1; else thinMask[i] = 1; }
+    const patches = [];
+    if (bbox(blobMask, W, H)) {
+      const p = composite(image, edited, blobMask);
+      if (p) { applyPatch(image, p); patches.push(p); }
+    }
+    if (opts.progress) opts.progress(0.3);
+    if (bbox(thinMask, W, H)) {
+      const p = inpaint(image, thinMask, { progress: (f) => opts.progress && opts.progress(0.3 + 0.7 * f) });
+      if (p) { applyPatch(image, p); patches.push(p); }
+    }
+    return patches;
+  }
+
+  const api = { hybridMerge, inpaint, inpaintCrop, smartErase, applyPatch, detectWires, diffMask, composite, bbox, dilate, erode, components, maxHoleRadius };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Engine = api;
 })(typeof self !== 'undefined' ? self : this);
