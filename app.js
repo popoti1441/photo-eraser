@@ -65,6 +65,8 @@ function refreshButtons() {
   $('btnErase').disabled = !has || !S.hasMask || S.busy;
   $('btnFromEdited').hidden = !S.edited;
   $('btnFromEdited').disabled = !has || !S.hasMask || S.busy;
+  $('btnFromEdited').classList.toggle('main', S.edited);
+  $('btnErase').classList.toggle('minor', S.edited);
   $('btnUndo').disabled = !S.undo.length || S.busy;
   $('btnRedo').disabled = !S.redo.length || S.busy;
   $('btnSave').disabled = !has || S.busy;
@@ -73,7 +75,8 @@ function refreshButtons() {
   $('btnClear').disabled = !S.hasMask || S.busy;
   $('btnCompare').hidden = !has;
   $('empty').hidden = has;
-  $('btnEdited').textContent = S.edited ? '🖼 보정본 다시 비교' : '🖼 보정본 불러오기';
+  $('dock').hidden = !has;
+  $('btnEdited').textContent = S.edited ? '🔁 바뀐 곳 다시 찾기' : '🖼 보정본 추가';
 }
 
 // ───────────── 사진 열기 ─────────────
@@ -135,7 +138,7 @@ async function openEdited(file) {
     clearMask(); orMask(new Uint8Array(r.mask));
     render();
     if (!localStorageGet('seenHelp')) { $('dlgHelp').showModal(); localStorageSet('seenHelp', '1'); }
-    else toast('보정본에서 바뀐 곳을 칠했어요. 다듬은 뒤 "보정본으로 채우기"', 3500);
+    else toast('보정본에서 바뀐 곳을 칠했어요. 필요하면 다듬고 ✅ 합치기', 3500);
   } catch (err) { toast(err.message || '보정본을 열지 못했어요', 4000); }
   finally { setBusy(false); }
 }
@@ -394,7 +397,10 @@ view.addEventListener('wheel', (e) => { if (!S.img) return; e.preventDefault(); 
 view.addEventListener('dblclick', (e) => { if (!S.img) return; const p = local(e); if (S.s > S.fit * 1.05) fitView(); else zoomAt(p.x, p.y, S.fit * 3); render(); });
 
 // ───────────── 버튼 ─────────────
-$('btnOpen').onclick = $('btnOpen2').onclick = () => $('pickMain').click();
+$('btnOpen').onclick = () => $('pickBoth').click();
+$('btnOpen2').onclick = () => $('pickMain').click();
+$('btnPickBoth').onclick = () => $('pickBoth').click();
+$('pickBoth').onchange = (e) => { const fs = [...e.target.files]; e.target.value = ''; openFiles(fs); };
 $('pickMain').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; openMain(f); };
 $('btnEdited').onclick = () => {
   if (S.edited) { // 이미 불러온 보정본으로 다시 자동 선택
@@ -440,6 +446,22 @@ cmp.addEventListener('contextmenu', (e) => e.preventDefault());
 window.addEventListener('resize', resize);
 new ResizeObserver(resize).observe(stage);
 
+// ───────────── 사진 1~2장 열기(원본/보정본 자동 구분) ─────────────
+async function openFiles(files) {
+  if (!files.length) return;
+  if (files.length >= 2) {
+    // 촬영 정보(EXIF)가 더 많은 쪽이 원본. 갤럭시 편집본은 촬영 정보가 대부분 빠져 있음
+    const score = async (f) => { const m = JpegMeta.extract(await f.arrayBuffer()); return m.exif ? m.exif.length : 0; };
+    const [s0, s1] = await Promise.all([score(files[0]), score(files[1])]);
+    const [main, ed] = s0 >= s1 ? [files[0], files[1]] : [files[1], files[0]];
+    await openMain(main);
+    if (S.img) await openEdited(ed);
+  } else {
+    await openMain(files[0]);
+    if (S.img) toast('갤럭시로 지운 사진도 있으면 "🖼 보정본 추가"를 눌러 주세요', 3500);
+  }
+}
+
 // ───────────── 공유로 받은 사진 ─────────────
 async function takeShared() {
   const params = new URLSearchParams(location.search);
@@ -455,14 +477,7 @@ async function takeShared() {
       files.push(new File([b], decodeURIComponent(r.headers.get('x-name') || '사진.jpg'), { type: b.type || 'image/jpeg' }));
       await cache.delete(k);
     }
-    if (!files.length) return;
-    if (files.length >= 2) {
-      // 촬영 정보가 더 많은 쪽이 원본, 다른 쪽은 보정본으로
-      const score = async (f) => { const m = JpegMeta.extract(await f.arrayBuffer()); return m.exif ? m.exif.length : 0; };
-      const [s0, s1] = await Promise.all([score(files[0]), score(files[1])]);
-      const [main, ed] = s0 >= s1 ? [files[0], files[1]] : [files[1], files[0]];
-      await openMain(main); await openEdited(ed);
-    } else await openMain(files[0]);
+    await openFiles(files);
   } catch (err) { toast('공유 받은 사진을 열지 못했어요'); }
 }
 

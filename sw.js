@@ -1,5 +1,5 @@
 // 오프라인 캐시 + 갤러리 "공유"로 받은 사진 넘겨주기
-const CACHE = 'eraser-v1';
+const CACHE = 'eraser-v2';
 const MODEL_CACHE = 'eraser-model-v1';
 const ASSETS = [
   './', './index.html', './style.css', './app.js', './worker.js', './engine.js', './jpegmeta.js',

@@ -34,9 +34,15 @@
     <canvas id="view" aria-label="사진. 손가락으로 칠하고, 두 손가락으로 확대·이동"></canvas>
     <div class="empty" id="empty">
       <p class="big">🪄</p>
-      <p><b>지울 사진을 여세요</b></p>
-      <p>갤러리에서 사진을 <b>공유 → 사진 지우개</b>로 보내거나 아래 버튼을 누르세요.</p>
-      <button class="primary" id="btnOpen2">사진 열기</button>
+      <p><b>갤럭시로 지운 사진, 화질은 원본 그대로</b></p>
+      <ol class="steps">
+        <li>갤러리 <b>AI 지우개</b>로 먼저 지우고 <b>사본으로 저장</b></li>
+        <li><b>원본 + 지운 사진</b> 2장을 여기로</li>
+        <li>지운 곳만 가져오고 나머지는 원본 화질로 저장</li>
+      </ol>
+      <button class="primary" id="btnPickBoth">📷 사진 2장 고르기</button>
+      <p class="small">갤러리에서 2장 선택 → 공유 → 사진 지우개 도 돼요</p>
+      <button class="link" id="btnOpen2">보정본 없이 직접 지우기</button>
     </div>
     <button class="compare" id="btnCompare" hidden>누르는 동안 원본</button>
     <div class="zoom-badge" id="zoomBadge" hidden></div>
@@ -64,17 +70,18 @@
       <span class="dot-prev" id="dotPrev"></span>
     </div>
     <div class="row auto">
+      <button class="chip" id="btnEdited">🖼 보정본 추가</button>
       <button class="chip" id="btnWires">⚡ 하늘 전선 자동 선택</button>
-      <button class="chip" id="btnEdited">🖼 보정본 불러오기</button>
     </div>
     <div class="row actions">
-      <button class="go" id="btnErase" disabled>✨ 칠한 곳 지우기</button>
-      <button class="go alt" id="btnFromEdited" hidden disabled>🖼 보정본으로 채우기</button>
+      <button class="go" id="btnFromEdited" hidden disabled>✅ 칠한 곳만 원본에 합치기</button>
+      <button class="go" id="btnErase" disabled>✨ AI로 지우기</button>
     </div>
   </section>
 </main>
 
 <input type="file" id="pickMain" accept="image/*" hidden>
+<input type="file" id="pickBoth" accept="image/*" multiple hidden>
 <input type="file" id="pickEdited" accept="image/*" hidden>
 
 <dialog id="dlgSave" class="sheet">
@@ -86,9 +93,9 @@
 </dialog>
 
 <dialog id="dlgHelp" class="sheet">
-  <h3>보정본으로 채우기</h3>
+  <h3>이렇게 쓰세요</h3>
   <p class="tip">갤럭시 <b>생성형 편집</b>으로 지운 사진을 불러오면, 두 사진이 다른 곳(=지운 곳)을 자동으로 칠해 드려요. 칠한 부분만 보정본에서 가져오고 나머지는 원본 화질 그대로예요.</p>
-  <p class="tip">자동 선택이 넘치거나 모자라면 <b>칠하기 / 빼기</b>로 다듬은 뒤 <b>보정본으로 채우기</b>를 누르세요.</p>
+  <p class="tip">자동 선택이 넘치거나 모자라면 <b>칠하기 / 빼기</b>로 다듬은 뒤 <b>✅ 칠한 곳만 원본에 합치기</b>를 누르세요.</p>
   <button class="sheet-btn cancel" data-act="close">알겠어요</button>
 </dialog>
 
