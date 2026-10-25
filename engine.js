@@ -660,7 +660,54 @@
     return patches;
   }
 
-  const api = { hybridMerge, inpaint, inpaintCrop, smartErase, applyPatch, detectWires, diffMask, composite, bbox, dilate, erode, components, maxHoleRadius };
+  // 좌하단 'AI로 생성한 콘텐츠' 같은 표시 찾기: 편집본(a)에만 있는 밝고 무채색인 글씨 → 그 둘레 사각형
+  function labelMask(a, b) {
+    const W = a.w, H = a.h;
+    const cw = Math.round(W * 0.6), y0 = Math.round(H * 0.82), ch = H - y0;
+    // 편집본·원본의 밝기(좌하단만)
+    const La = new Float32Array(cw * ch), Lb = new Float32Array(cw * ch), chroma = new Float32Array(cw * ch);
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+      const i = ((y + y0) * W + x) * 4, j = y * cw + x;
+      const r = a.d[i], g = a.d[i + 1], bl = a.d[i + 2];
+      La[j] = 0.299 * r + 0.587 * g + 0.114 * bl;
+      Lb[j] = 0.299 * b.d[i] + 0.587 * b.d[i + 1] + 0.114 * b.d[i + 2];
+      chroma[j] = Math.max(r, g, bl) - Math.min(r, g, bl);
+    }
+    // 가는 밝은 획만 남기기(화이트 톱햇): 원본에는 없고 편집본에만 있는 획
+    const k = odd(Math.max(7, Math.round(W / 120)));
+    const thA = morph(morph(La, cw, ch, k, false), cw, ch, k, true);
+    const thB = morph(morph(Lb, cw, ch, k, false), cw, ch, k, true);
+    const hit = new Uint8Array(cw * ch);
+    for (let j = 0; j < cw * ch; j++) {
+      const ta = La[j] - thA[j], tb = Lb[j] - thB[j];
+      if (ta - tb > 28 && La[j] > 140 && chroma[j] < 70) hit[j] = 1;
+    }
+    // 글자들을 한 줄로 묶어 가장 많이 걸린 덩어리 = 표시 문구
+    const line = dilate(hit, cw, ch, Math.max(9, Math.round(W / 60)));
+    const { lab, comps } = components(line, cw, ch);
+    let best = -1, bestScore = 0;
+    const cnt = new Int32Array(comps.length);
+    for (let j = 0; j < cw * ch; j++) if (hit[j] && lab[j] >= 0) cnt[lab[j]]++;
+    comps.forEach((c, i) => {
+      const wide = (c.x1 - c.x0) > (c.y1 - c.y0) * 2; // 가로로 긴 글줄
+      const score = cnt[i] * (wide ? 2 : 1) * (1 + c.y1 / ch);
+      if (cnt[i] > 20 && score > bestScore) { bestScore = score; best = i; }
+    });
+    const m = new Uint8Array(W * H);
+    if (best < 0) return m;
+    let bx0 = cw, by0 = ch, bx1 = -1, by1 = -1;
+    for (let j = 0; j < cw * ch; j++) if (hit[j] && lab[j] === best) {
+      const x = j % cw, y = (j / cw) | 0;
+      if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y;
+    }
+    const pad = Math.max(8, Math.round(Math.max(W, H) * 0.006));
+    bx0 = Math.max(0, bx0 - pad); bx1 = Math.min(W - 1, bx1 + pad);
+    by0 = Math.max(0, by0 + y0 - pad); by1 = Math.min(H - 1, by1 + y0 + pad);
+    for (let y = by0; y <= by1; y++) m.fill(1, y * W + bx0, y * W + bx1 + 1);
+    return m;
+  }
+
+  const api = { labelMask, hybridMerge, inpaint, inpaintCrop, smartErase, applyPatch, detectWires, diffMask, composite, bbox, dilate, erode, components, maxHoleRadius };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Engine = api;
 })(typeof self !== 'undefined' ? self : this);

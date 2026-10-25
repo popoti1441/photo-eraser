@@ -101,3 +101,5 @@ dialog.sheet::backdrop { background: rgba(0,0,0,.5); }
 .empty .small { font-size: 12.5px; margin-top: 8px; }
 .link { margin-top: 10px; color: var(--accent); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; padding: 6px; }
 .actions .go.minor { flex: 0 0 34%; background: var(--soft); color: var(--text); font-size: 14px; font-weight: 700; }
+.chip.wide { flex: 1; background: var(--alt-soft); color: var(--alt); }
+.row:has(> [hidden]:only-child) { display: none; }

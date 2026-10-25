@@ -73,6 +73,13 @@ self.onmessage = async (e) => {
         post({ type: 'mask', id: m.id, mask: mask.buffer }, [mask.buffer]);
         break;
       }
+      case 'labelMask': {
+        // image = 편집본(기준), edited = 원본. 좌하단에서 편집본에만 있는 밝은 글씨를 찾음
+        if (!edited) throw new Error('원본이 없어요');
+        const mask = E.labelMask(image, edited);
+        post({ type: 'mask', id: m.id, mask: mask.buffer }, [mask.buffer]);
+        break;
+      }
       case 'hybrid': {
         if (!edited) throw new Error('보정본이 없어요');
         const mask = new Uint8Array(m.mask);

@@ -66,6 +66,9 @@ function refreshButtons() {
   $('btnFromEdited').hidden = !S.edited;
   $('btnFromEdited').disabled = !has || !S.hasMask || S.busy;
   $('btnFromEdited').classList.toggle('main', S.edited);
+  $('btnFromEdited').textContent = S.mode === 'label' ? '✅ 표시 자리만 원본으로' : '✅ 칠한 곳만 원본에 합치기';
+  $('btnLabel').hidden = !S.edited || S.mode === 'label';
+  $('btnLabel').disabled = S.busy;
   $('btnErase').classList.toggle('minor', S.edited);
   $('btnUndo').disabled = !S.undo.length || S.busy;
   $('btnRedo').disabled = !S.redo.length || S.busy;
@@ -104,7 +107,7 @@ async function openMain(file) {
     Object.assign(S, { file, name: file.name || '사진.jpg', meta, cs, w: d.c.width, h: d.c.height, img: d.c, ictx: d.ctx, orig: d.bmp });
     S.mask = document.createElement('canvas'); S.mask.width = S.w; S.mask.height = S.h;
     S.mctx = S.mask.getContext('2d', { willReadFrequently: true });
-    S.hasMask = false; S.edited = false; S.undo = []; S.redo = [];
+    S.hasMask = false; S.edited = false; S.undo = []; S.redo = []; S.mode = 'merge';
     const data = S.ictx.getImageData(0, 0, S.w, S.h, { colorSpace: cs });
     await callLoad('load', { w: S.w, h: S.h, buf: data.data.buffer }, [data.data.buffer], 'loaded');
     $('title').textContent = S.name;
@@ -120,7 +123,8 @@ function supportsP3() {
   catch (_) { return false; }
 }
 
-async function openEdited(file) {
+async function openEdited(file, opts) {
+  opts = opts || {};
   if (!file || !S.img) return;
   setBusy(true, '보정본 여는 중…');
   try {
@@ -132,7 +136,8 @@ async function openEdited(file) {
     const data = d.ctx.getImageData(0, 0, S.w, S.h, { colorSpace: S.cs });
     await callLoad('loadEdited', { w: S.w, h: S.h, buf: data.data.buffer }, [data.data.buffer], 'editedLoaded');
     d.bmp.close && d.bmp.close();
-    S.edited = true;
+    S.edited = true; S.editFile = file; S.pairOrig = S.file;
+    if (opts.noDiff) return;
     setBusy(true, '보정본과 다른 곳 찾는 중…');
     const r = await call('diff', {});
     clearMask(); orMask(new Uint8Array(r.mask));
@@ -207,11 +212,29 @@ async function doFromEdited() {
   const m = readMask(); if (!m) return toast('가져올 곳을 칠해 주세요');
   setBusy(true, '보정본에서 가져오는 중…');
   try {
-    const r = await call('hybrid', { mask: m.buffer }, [m.buffer]);
+    const label = S.mode === 'label';
+    const r = await call(label ? 'composite' : 'hybrid', { mask: m.buffer }, [m.buffer]);
     applyPatches(r.patches);
     clearMask(); render();
-    toast('합쳤어요. 더 다듬을 곳은 저장 → 갤럭시 AI 지우개 → 두 장을 다시 넣으면 그 부분만 반영돼요', 5000);
+    toast(label ? '표시 자리만 원본으로 바꿨어요. 나머지는 편집한 그대로예요' : '합쳤어요. 더 다듬을 곳은 저장 → 갤럭시 AI 지우개 → 두 장을 다시 넣으면 그 부분만 반영돼요', 5000);
   } catch (err) { toast('실패: ' + err.message, 4000); }
+  finally { setBusy(false); }
+}
+// 편집본은 그대로 두고, 좌하단 'AI로 생성한 콘텐츠' 표시 자리만 원본으로
+async function doLabelMode() {
+  const orig = S.pairOrig, ed = S.editFile;
+  if (!orig || !ed) return toast('원본과 편집본 2장을 먼저 넣어 주세요');
+  await openMain(ed);
+  if (!S.img) return;
+  await openEdited(orig, { noDiff: true });
+  S.pairOrig = orig; S.editFile = ed; S.mode = 'label';
+  setBusy(true, '표시 위치 찾는 중…');
+  try {
+    const r = await call('labelMask', {});
+    const any = orMask(new Uint8Array(r.mask));
+    render();
+    toast(any ? '표시 자리를 칠했어요. 확인 후 ✅ 표시 자리만 원본으로' : '표시를 못 찾았어요. 글씨 위를 직접 칠해 주세요', 4000);
+  } catch (err) { toast(err.message, 4000); }
   finally { setBusy(false); }
 }
 async function doWires() {
@@ -414,6 +437,7 @@ $('pickEdited').onchange = (e) => { const f = e.target.files[0]; e.target.value 
 $('btnErase').onclick = doErase;
 $('btnFromEdited').onclick = doFromEdited;
 $('btnWires').onclick = doWires;
+$('btnLabel').onclick = doLabelMode;
 $('btnUndo').onclick = undo;
 $('btnRedo').onclick = redo;
 $('btnClear').onclick = () => { clearMask(); render(); };
